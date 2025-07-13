@@ -306,19 +306,39 @@ int main(int argc, char* argv[]) {
 
         if (tipo_busca == "titulo") {
             vector<Livro*> resultado = indiceTitulo.buscarPrefixo(query);
-            for (const auto* l : resultado) {
-                l->print(); // Usar a função print() para exibir todos os detalhes
-            }
+            for (const auto* l : resultado) l->print();
         } else if (tipo_busca == "autor") {
             vector<Livro*> resultado = indiceAutor.buscarPrefixo(query);
-            for (const auto* l : resultado) {
-                l->print(); // Usar a função print() para exibir todos os detalhes
-            }
+            for (const auto* l : resultado) l->print();
         } else if (tipo_busca == "codigo") {
             int cod = stoi(query);
+            if (indiceCodigo.count(cod)) indiceCodigo[cod]->print();
+            else cout << "Livro não encontrado!" << endl;
+        } else if (tipo_busca == "remove") {
+            int cod = stoi(query);
             if (indiceCodigo.count(cod)) {
-                Livro* l = indiceCodigo[cod];
-                l->print(); // Usar a função print() para exibir todos os detalhes
+                Livro* livroRemovido = indiceCodigo[cod];
+                cout << "Livro removido permanentemente!" << endl;
+                livroRemovido->print();
+
+                // Reescrever CSV sem o livro removido
+                ifstream in(argv[1]);
+                ofstream out("temp.csv");
+                string linha;
+                getline(in, linha); // cabeçalho
+                out << linha << "\n";
+                while (getline(in, linha)) {
+                    vector<string> campos = parseCSVLine(linha);
+                    if (campos.size() < 1) continue;
+                    int codigoLinha = 0;
+                    try { codigoLinha = stoi(campos[0]); } catch (...) {}
+                    if (codigoLinha == cod) continue; // pula o livro removido
+                    out << linha << "\n";
+                }
+                in.close();
+                out.close();
+                remove(argv[1]);
+                rename("temp.csv", argv[1]);
             } else {
                 cout << "Livro não encontrado!" << endl;
             }
@@ -327,97 +347,104 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         return 0;
-    }
+    } else if (argc >= 3) {
+        string comando = argv[2];
+        comando.erase(0, comando.find_first_not_of(" \t\n\r"));
+        comando.erase(comando.find_last_not_of(" \t\n\r") + 1);
+        transform(comando.begin(), comando.end(), comando.begin(), ::tolower);
 
-    // Menu interativo
-    cout << "\n+----------------------------------------+" << endl;
-    cout << "|      Sistema de Busca de Acervo        |" << endl;
-    cout << "+----------------------------------------+" << endl;
+        cout << "DEBUG: argc=" << argc << ", comando='" << comando << "', argv[3]='" << argv[3] << "'" << endl;
 
-    while (true) {
-        cout << "\n+----------------------------------------+" << endl;
-        cout << "|               Opções de Busca          |" << endl;
-        cout << "+----------------------------------------+" << endl;
-        cout << "| 1. Buscar por palavra no título        |" << endl;
-        cout << "| 2. Buscar por autor                    |" << endl;
-        cout << "| 3. Buscar por código                   |" << endl;
-        cout << "| 4. Sair                                |" << endl;
-        cout << "+----------------------------------------+" << endl;
-        cout << "Escolha uma opção: ";
+        if (comando == "add" && argc == 11) {
+            cout << "DEBUG: Entrando no bloco ADD" << endl;
+            // Monta a linha com 25 campos
+            vector<string> campos(25, "");
+            campos[0]  = argv[10]; // Código
+            campos[2]  = argv[3];  // Título
+            campos[1]  = argv[4];  // Autor
+            campos[24] = argv[5];  // Editora
+            campos[11] = argv[6];  // Ano
+            campos[15] = argv[7];  // Exemplares
+            campos[10] = argv[8];  // Classificação
+            campos[20] = argv[9];  // Campus
 
-        int opcao;
-        cin >> opcao;
-        cin.ignore(); // Limpar buffer
+            // campos[8] a campos[24] permanecem vazios
 
-        if (opcao == 4) break;
-
-        switch (opcao) {
-            case 1: {
-                cout << "\n+----------------------------------------+" << endl;
-                cout << "|      Buscar por palavra no título      |" << endl;
-                cout << "+----------------------------------------+" << endl;
-                cout << "Digite uma palavra para buscar no título: ";
-                string palavra;
-                getline(cin, palavra);
-                transform(palavra.begin(), palavra.end(), palavra.begin(), ::tolower);
-                
-                vector<Livro*> resultado = indiceTitulo.buscarPrefixo(palavra);
-                cout << "\n+----------------------------------------+" << endl;
-                cout << "|      Resultados encontrados: " << resultado.size() << "         |" << endl;
-                cout << "+----------------------------------------+" << endl;
-                for (const auto* l : resultado) {
-                    l->print();
-                }
-                break;
+            // Gera a linha CSV
+            string linha;
+            for (size_t i = 0; i < campos.size(); ++i) {
+                if (i > 0) linha += ",";
+                linha += "\"" + campos[i] + "\"";
             }
-            case 2: {
-                cout << "\n+----------------------------------------+" << endl;
-                cout << "|         Buscar por autor               |" << endl;
-                cout << "+----------------------------------------+" << endl;
-                cout << "Digite uma palavra para buscar no autor: ";
-                string palavra;
-                getline(cin, palavra);
-                transform(palavra.begin(), palavra.end(), palavra.begin(), ::tolower);
-                
-                vector<Livro*> resultado = indiceAutor.buscarPrefixo(palavra);
-                cout << "\n+----------------------------------------+" << endl;
-                cout << "|      Resultados encontrados: " << resultado.size() << "         |" << endl;
-                cout << "+----------------------------------------+" << endl;
-                for (const auto* l : resultado) {
-                    l->print();
-                }
-                break;
-            }
-            case 3: {
-                cout << "\n+----------------------------------------+" << endl;
-                cout << "|         Buscar por código              |" << endl;
-                cout << "+----------------------------------------+" << endl;
-                cout << "Digite o código do livro: ";
-                int cod;
-                cin >> cod;
-                
-                if (indiceCodigo.count(cod)) {
-                    cout << "\n+----------------------------------------+" << endl;
-                    cout << "|         Livro encontrado               |" << endl;
-                    cout << "+----------------------------------------+" << endl;
-                    indiceCodigo[cod]->print();
+            linha += "\n";
+
+            ofstream out(argv[1], ios::app);
+            out << linha;
+            out.close();
+            cout << "Livro adicionado com sucesso!" << endl;
+            return 0;
+        }
+        else if (comando == "remove" && argc >= 4) {
+            cout << "DEBUG: Entrando no bloco REMOVE" << endl;
+            try {
+                string codigoStr = argv[3];
+                cout << "DEBUG: String do codigo recebida: '" << codigoStr << "'" << endl;
+                int codigo = stoi(codigoStr);
+                cout << "DEBUG: Codigo convertido para int: " << codigo << endl;
+                cout << "DEBUG: Tamanho do mapa indiceCodigo: " << indiceCodigo.size() << endl;
+
+                bool encontrado = false;
+                Livro* livroRemovido = nullptr;
+
+                if (indiceCodigo.count(codigo)) {
+                    livroRemovido = indiceCodigo[codigo];
+                    encontrado = true;
+                    cout << "DEBUG: Livro encontrado! Título: " << livroRemovido->titulo << endl;
+                    indiceCodigo.erase(codigo);
+                    auto it = remove(livros.begin(), livros.end(), livroRemovido);
+                    livros.erase(it, livros.end());
+                    cout << "Livro removido temporariamente!" << endl;
+                    livroRemovido->print();
                 } else {
-                    cout << "\n+----------------------------------------+" << endl;
-                    cout << "|      Livro não encontrado              |" << endl;
-                    cout << "+----------------------------------------+" << endl;
+                    cout << "Livro nao encontrado!" << endl;
                 }
-                break;
+            } catch (const std::exception& e) {
+                cerr << "Erro ao converter codigo: " << e.what() << endl;
+                return 1;
             }
-            default:
-                cout << "\n+----------------------------------------+" << endl;
-                cout << "|         Opção inválida                 |" << endl;
-                cout << "+----------------------------------------+" << endl;
+            return 0;
+        }
+        // Se não for comando, tenta busca
+        else if (argc == 4) {
+            string tipo_busca = comando;
+            string query = argv[3];
+            transform(query.begin(), query.end(), query.begin(), ::tolower);
+
+            if (tipo_busca == "titulo") {
+                vector<Livro*> resultado = indiceTitulo.buscarPrefixo(query);
+                for (const auto* l : resultado) l->print();
+            } else if (tipo_busca == "autor") {
+                vector<Livro*> resultado = indiceAutor.buscarPrefixo(query);
+                for (const auto* l : resultado) l->print();
+            } else if (tipo_busca == "codigo") {
+                int cod = stoi(query);
+                if (indiceCodigo.count(cod)) indiceCodigo[cod]->print();
+                else cout << "Livro não encontrado!" << endl;
+            } else {
+                cerr << "Tipo de busca inválido!" << endl;
+                return 1;
+            }
+            return 0;
+        }
+        else {
+            cerr << "Tipo de busca inválido!" << endl;
+            return 1;
         }
     }
 
-    // Liberar memória
-    for (auto* l : livros) delete l;
-
+    // Remova o menu interativo daqui!
+    // Ele não deve ser executado quando há argumentos.
+    // Se quiser manter para uso manual, coloque dentro de "if (argc < 2)".
     return 0;
 }
 
