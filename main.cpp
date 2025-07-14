@@ -12,7 +12,8 @@
 #include <locale>
 
 using namespace std;
-
+// Compilação: g++ -o main.exe main.cpp
+// python app.py
 // --------------------------- Livro ----------------------------
 struct Livro {
     int codigo;
@@ -368,8 +369,6 @@ int main(int argc, char* argv[]) {
             campos[10] = argv[8];  // Classificação
             campos[20] = argv[9];  // Campus
 
-            // campos[8] a campos[24] permanecem vazios
-
             // Gera a linha CSV
             string linha;
             for (size_t i = 0; i < campos.size(); ++i) {
@@ -442,12 +441,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Remova o menu interativo daqui!
-    // Ele não deve ser executado quando há argumentos.
-    // Se quiser manter para uso manual, coloque dentro de "if (argc < 2)".
     return 0;
 }
 
-// Compilação: g++ -o main.exe main.cpp
-// Execução: ./main.exe ACERVO-DAS-BIBLIOTECAS-IFES-2025.csv
-// python app.py
+
